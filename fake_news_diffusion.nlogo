@@ -1,7 +1,27 @@
 breed [usuarios usuario ]
 
-usuarios-own [es-familia? es-amigo? intolerancia preferenciaPrivacidad preferenciaAlcance preferenciaFacilidad decisionDifundir vinculacionIdeasPre pesoVinculacionIdeasPre verificacion pesoVerificacion confianza pesoConfianza
-  noConfianzaMedios pesoNoConfianzaMedios impactoEmocional pesoImpactoEmocional canal difusor?]
+usuarios-own [
+  es-familia?
+  es-amigo?
+  es-colega?
+  es-otros?
+  intolerancia
+  preferenciaPrivacidad
+  preferenciaAlcance
+  preferenciaFacilidad
+  decisionDifundir
+  vinculacionIdeasPre
+  pesoVinculacionIdeasPre
+  verificacion
+  pesoVerificacion
+  confianza
+  pesoConfianza
+  noConfianzaMedios
+  pesoNoConfianzaMedios
+  impactoEmocional
+  pesoImpactoEmocional
+  experiencia
+  canal difusor?]
 
 ;;------------------------------------------------------------------------------------------------------------------------------------------
 ;;SETUP modelo
@@ -26,6 +46,8 @@ to setup-usuarios
     set size 1
     set es-familia? true
     set es-amigo? false
+    set es-colega? false
+    set es-otros? false
     set intolerancia 0
     set preferenciaPrivacidad 0
     set preferenciaAlcance 0
@@ -40,6 +62,7 @@ to setup-usuarios
     set pesoNoConfianzaMedios 0
     set impactoEmocional 1
     set pesoImpactoEmocional 0.8
+    set experiencia 0
     let preferenciaValidator random 3
     if preferenciaValidator = 0 [ set canal "Facebook" ]
     if preferenciaValidator = 1 [ set canal "Twitter" ]
@@ -50,16 +73,10 @@ to setup-usuarios
    ask n-of i usuarios[
     set shape "person business"
     setxy random-xcor random-ycor
-    set es-familia? false
-    set es-amigo? true
   ]
    let j num-usuarios * 0.12
    ask n-of j usuarios[
-    set pesoVinculacionIdeasPre 1
-  ]
-   let k num-usuarios * 0.12
-   ask n-of k usuarios[
-    set pesoVinculacionIdeasPre 0.4
+    set pesoVinculacionIdeasPre 0.6 + random-float 0.25
   ]
    let l num-usuarios * 0.08
    ask n-of l usuarios[
@@ -67,42 +84,55 @@ to setup-usuarios
   ]
   let m num-usuarios * 0.286
    ask n-of m usuarios[
-    set pesoVerificacion 1
+    set pesoVerificacion 0.7 + random-float 0.3
+    set es-familia? false
+    set es-amigo? true
+    set es-colega? false
+    set es-otros? false
   ]
   let n num-usuarios * 0.286
    ask n-of n usuarios[
-    set pesoVerificacion 0.8
+    set pesoVerificacion 0.6 + random-float 0.2
+    set es-familia? false
+    set es-amigo? false
+    set es-colega? true
+    set es-otros? false
   ]
     let o num-usuarios * 0.143
    ask n-of o usuarios[
-    set pesoVerificacion 0.6
+    set pesoVerificacion 0.4 + random-float 0.2
   ]
    let p num-usuarios * 0.143
    ask n-of p usuarios[
-    set pesoVerificacion 0.5
+    set pesoVerificacion 0.3 + random-float 0.2
   ]
    let q num-usuarios * 0.143
    ask n-of q usuarios[
-    set pesoVerificacion 0.3
+    set pesoVerificacion 0.2 + random-float 0.1
   ]
    let r num-usuarios * 0.25
    ask n-of r usuarios[
-    set pesoConfianza 0.8
+    set pesoConfianza 0.65 + random-float 0.15
     set impactoEmocional 0
+    set pesoVinculacionIdeasPre 0.25 + random-float 0.1
+    set es-familia? false
+    set es-amigo? false
+    set es-colega? false
+    set es-otros? true
   ]
    let s num-usuarios * 0.125
    ask n-of s usuarios[
     set pesoConfianza 0.7
-    set pesoImpactoEmocional 0.3
-    set pesoNoConfianzaMedios 0.6
+    set pesoImpactoEmocional 0.2 + random-float 0.1
+    set pesoNoConfianzaMedios 0.45 + random-float 0.15
   ]
    let t num-usuarios * 0.125
    ask n-of t usuarios[
-    set pesoNoConfianzaMedios 0.1
+    set pesoNoConfianzaMedios 0.05  + random-float 0.05
   ]
    let u num-usuarios * 0.125
    ask n-of u usuarios[
-    set pesoNoConfianzaMedios 0.5
+    set pesoNoConfianzaMedios 0.4 + random-float 0.1
   ]
    let v num-usuarios * 0.4
    ask n-of v usuarios[
@@ -115,16 +145,21 @@ to setup-usuarios
   ]
    let x num-usuarios * 0.222
    ask n-of x usuarios[
-    set pesoConfianza 0.8
+    set pesoConfianza 0.65 + random-float 0.15
   ]
    let y num-usuarios * 0.444
    ask n-of y usuarios[
-    set pesoConfianza 0.7
+    set pesoConfianza 0.6 + random-float 0.1
   ]
    let z num-usuarios * 0.111
    ask n-of z usuarios[
-    set pesoConfianza 0.3
+    set pesoConfianza 0.2 + random-float 0.1
   ]
+
+  ask n-of num-usuarios usuarios[
+    ajustar-pesos
+  ]
+
 end
 
 to setup-network-links
@@ -159,14 +194,54 @@ to transmitir-noticia-falsa
     set difusor? false
     let canalActual canal
     ask link-neighbors with [canal = canalActual] [
+      ; SET noConfianzaMedios
       ifelse random-float 1 < 0.751 [set noConfianzaMedios 1] [set noConfianzaMedios 0]
-      ifelse random-float 1 < 0.268 [set pesoNoConfianzaMedios random-float 0.4] [ifelse random-float 1 < 0.3 [set pesoNoConfianzaMedios random-float (0.6 - 0.4) + 0.4 ] [ifelse random-float 1 < 0.432 [set pesoNoConfianzaMedios random-float (0.1 - 0.7) + 0.7 ][]]]
-
+      ; SET pesoNoConfianzaMedios
+      ifelse random-float 1 < 0.268 [set pesoNoConfianzaMedios random-float 0.4] [ifelse random-float 1 < 0.3 [set pesoNoConfianzaMedios random-float (0.6 - 0.4) + 0.4 ] [ifelse random-float 1 < 0.432 [set pesoNoConfianzaMedios random-float (1 - 0.7) + 0.7 ][]]]
+      ; SET confianza
+      if es-amigo? [ifelse random-float 1 < 0.42 [set confianza 1][set confianza 0]]
+      if es-familia? [ifelse random-float 1 < 0.40 [set confianza 1][set confianza 0]]
+      if es-colega? [ifelse random-float 1 < 0.10 [set confianza 1][set confianza 0]]
+      if es-familia? [ifelse random-float 1 < 0.07 [set confianza 1][set confianza 0]]
+      ; SET pesoConfianza
+      ifelse random-float 1 < 0.293 [set pesoConfianza random-float 0.4] [ifelse random-float 1 < 0.387 [set pesoConfianza random-float (0.7 - 0.4) + 0.4 ] [ifelse random-float 1 < 0.326 [set pesoConfianza random-float (1 - 0.8) + 0.8 ][]]]
+      ; SET verificacion
+      if experiencia >= 0 AND experiencia <= 20 [ifelse random-float 1 < 0.9 [set verificacion 1][set verificacion 0]]
+      if experiencia > 20 AND experiencia <= 40 [ifelse random-float 1 < 0.7 [set verificacion 1][set verificacion 0]]
+      if experiencia > 40 AND experiencia <= 60 [ifelse random-float 1 < 0.6 [set verificacion 1][set verificacion 0]]
+      if experiencia > 60 AND experiencia <= 80 [ifelse random-float 1 < 0.4 [set verificacion 1][set verificacion 0]]
+      if experiencia > 80 AND experiencia <= 100 [ifelse random-float 1 < 0.2 [set verificacion 1][set verificacion 0]]
+      ajustar-pesos
       let decisionCompartir (noConfianzaMedios * pesoNoConfianzaMedios) + (vinculacionIdeasPre * pesoVinculacionIdeasPre) + (verificacion * pesoVerificacion) + (confianza * pesoConfianza) + (impactoEmocional * pesoImpactoEmocional)
       let randomizer random-float 1
+      show decisionCompartir
+      show randomizer
+      if decisionCompartir < randomizer [ser-fuente-noticia-falsa]
+    ]
+  ]
+end
 
-      if decisionCompartir < randomizer [ser-fuente-noticia-falsa] ] ]
-
+to ajustar-pesos
+      let sumPesos (pesoVinculacionIdeasPre + pesoVerificacion + pesoConfianza + pesoNoConfianzaMedios + pesoImpactoEmocional)
+      if(sumPesos != 1)[
+        ifelse sumPesos < 1 [
+          let diff 1 - sumPesos
+          let randomPeso random 5
+          if randomPeso = 0 [set pesoVinculacionIdeasPre (pesoVinculacionIdeasPre + diff)]
+          if randomPeso = 1 [set pesoVerificacion (pesoVerificacion + diff)]
+          if randomPeso = 2 [set pesoConfianza (pesoConfianza + diff)]
+          if randomPeso = 3 [set pesoNoConfianzaMedios (pesoNoConfianzaMedios + diff)]
+          if randomPeso = 4 [set pesoImpactoEmocional (pesoImpactoEmocional + diff)]
+        ] [
+          let diff sumPesos - 1
+          let randomPeso random 5
+          if randomPeso = 0 [set pesoVinculacionIdeasPre (pesoVinculacionIdeasPre - diff)]
+          if randomPeso = 1 [set pesoVerificacion (pesoVerificacion - diff)]
+          if randomPeso = 2 [set pesoConfianza (pesoConfianza - diff)]
+          if randomPeso = 3 [set pesoNoConfianzaMedios (pesoNoConfianzaMedios - diff)]
+          if randomPeso = 4 [set pesoImpactoEmocional (pesoImpactoEmocional - diff)]
+        ]
+      ]
 end
 
 to ser-fuente-noticia-falsa
@@ -210,7 +285,7 @@ num-usuarios
 num-usuarios
 0
 500
-10.0
+50.0
 5
 1
 NIL
@@ -259,8 +334,8 @@ num-init-noticias-falsas
 num-init-noticias-falsas
 0
 50
-4.0
-2
+1.0
+1
 1
 NIL
 HORIZONTAL
