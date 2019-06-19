@@ -1,5 +1,5 @@
 extensions [array]
-globals [num_noticias]
+globals [num_noticias total_facebook total_twitter total_whatsapp total_redes total_x_hora_facebook total_x_hora_twitter total_x_hora_whatsapp]
 breed [usuarios usuario]
 breed [noticias noticia]
 
@@ -25,8 +25,11 @@ usuarios-own [
   peso_impacto_emocional
   experiencia
   propenso_facebook
+  limite_propenso_facebook
   propenso_twitter
+  limite_propenso_twitter
   propenso_whatsapp
+  limite_propenso_whatsapp
   usuario_facebook?
   usuario_twitter?
   usuario_whatsapp?
@@ -44,7 +47,21 @@ usuarios-own [
   conocimiento_facebook
   conocimiento_twitter
   conocimiento_whatsapp
-  difusor?]
+  afinidad_contactos_facebook_politico
+  afinidad_contactos_facebook_leyendas
+  afinidad_contactos_facebook_negocios
+  afinidad_contactos_facebook_cientifico
+  afinidad_contactos_twitter_politico
+  afinidad_contactos_twitter_leyendas
+  afinidad_contactos_twitter_negocios
+  afinidad_contactos_twitter_cientifico
+  afinidad_contactos_whatsapp_politico
+  afinidad_contactos_whatsapp_leyendas
+  afinidad_contactos_whatsapp_negocios
+  afinidad_contactos_whatsapp_cientifico
+  difusor?
+  compartir_noticia_dia?
+  conocimiento_twitter]
 
 noticias-own [
   formato ; 0 - Texto, 1 - Imagen, 2 - Video
@@ -52,6 +69,8 @@ noticias-own [
   canal; 0 - Facebook, 1 - Twitter, 2 - Whatsapp
   reaccion_positiva
   reaccion_negativa
+  caracteres
+  hora
 ]
 
 
@@ -66,37 +85,104 @@ to setup
   ask n-of num-init-usuarios-transmisores usuarios
     [
       ser-fuente-noticia-falsa true 0 0 0
-    ]
+  ]
+  setup-globals
   reset-ticks
 end
 
 to setup-noticias
   set num_noticias (num-noticias-texto + num-noticias-imagen + num-noticias-video)
+  let random_noticias? false
+  let aux_solo_noticias_politica? false
+  let aux_solo_noticias_leyendas? false
+  let aux_solo_noticias_negocios? false
+  let aux_solo_noticias_cientifico? false
+  if solo_noticias_politica? = false AND solo_noticias_leyendas? = false AND solo_noticias_negocios? = false AND solo_noticias_cientifico? = false [set random_noticias? true]
+  if solo_noticias_politica? [
+    set aux_solo_noticias_politica? true
+  ]
+  if solo_noticias_leyendas? [
+    set aux_solo_noticias_leyendas? true
+  ]
+  if solo_noticias_negocios? [
+    set aux_solo_noticias_negocios? true
+  ]
+  if solo_noticias_cientifico? [
+    set aux_solo_noticias_cientifico? true
+  ]
   create-noticias num-noticias-texto[
     hide-turtle
     set formato 0
-    set tema random 3
+    ifelse random_noticias?[
+      set tema random 4
+    ][
+      if solo_noticias_politica? [
+        set tema 0
+      ]
+      if solo_noticias_leyendas? [
+        set tema 1
+      ]
+      if solo_noticias_negocios? [
+        set tema 2
+      ]
+      if solo_noticias_cientifico? [
+        set tema 3
+      ]
+    ]
     set reaccion_positiva 0
     set reaccion_negativa 0
+    set caracteres 500
   ]
   create-noticias num-noticias-imagen[
     hide-turtle
     set formato 1
-    set tema random 3
+    ifelse random_noticias?[
+      set tema random 4
+    ][
+      if solo_noticias_politica? [
+        set tema 0
+      ]
+      if solo_noticias_leyendas? [
+        set tema 1
+      ]
+      if solo_noticias_negocios? [
+        set tema 2
+      ]
+      if solo_noticias_cientifico? [
+        set tema 3
+      ]
+    ]
     set reaccion_positiva 0
     set reaccion_negativa 0
+    set caracteres 0
   ]
   create-noticias num-noticias-video[
     hide-turtle
     set formato 2
-    set tema random 3
+    ifelse random_noticias?[
+      set tema random 4
+    ][
+      if solo_noticias_politica? [
+        set tema 0
+      ]
+      if solo_noticias_leyendas? [
+        set tema 1
+      ]
+      if solo_noticias_negocios? [
+        set tema 2
+      ]
+      if solo_noticias_cientifico? [
+        set tema 3
+      ]
+    ]
     set reaccion_positiva 0
     set reaccion_negativa 0
+    set caracteres 0
   ]
 end
 
 to setup-usuarios
-   create-usuarios num-usuarios[
+  create-usuarios num-usuarios[
     setxy random-xcor random-ycor
     set color gray
     set shape "person student"
@@ -129,31 +215,73 @@ to setup-usuarios
     set tema_cientifico? false
     set difusor? false
     set noticias_array []
-    set contactos_facebook random 500
-    set contactos_twitter random 500
-    set contactos_whatsapp random 100
-    set propenso_facebook 0
-    set propenso_twitter 0
-    set propenso_whatsapp 0
+    set contactos_facebook random (500 - 10) + 10
+    set contactos_twitter random (1000 - 10) + 10
+    set contactos_whatsapp random (100 - 10) + 10
     set conocimiento_facebook random 2
     set conocimiento_twitter random 2
     set conocimiento_whatsapp random 2
-   ]
-   let i num-usuarios * 0.5
-   ask n-of i usuarios[
+    ifelse conocimiento_facebook = 0 AND conocimiento_twitter = 0 AND conocimiento_whatsapp = 0 [
+      let random_conocimiento 3
+      if random_conocimiento = 0 [
+        let aux_random_propenso_facebook random-float (10 - 0.1) + 0.1
+        ifelse aux_random_propenso_facebook + propenso_facebook > 10 [set propenso_facebook 10][set propenso_facebook aux_random_propenso_facebook + propenso_facebook]
+      ]
+      if random_conocimiento = 1 [
+        let aux_random_propenso_twitter random-float (10 - 0.1) + 0.1
+        ifelse aux_random_propenso_twitter + propenso_twitter > 10 [set propenso_twitter 10][set propenso_twitter aux_random_propenso_twitter + propenso_twitter]
+      ]
+      if random_conocimiento = 2 [
+        let aux_random_propenso_whatsapp random-float (10 - 0.1) + 0.1
+        ifelse aux_random_propenso_whatsapp + propenso_whatsapp > 10 [set propenso_whatsapp 10][set propenso_whatsapp aux_random_propenso_whatsapp + propenso_whatsapp]
+      ]
+    ] [
+      if conocimiento_facebook = 1 [
+        let aux_random_propenso_facebook random-float (10 - 0.1) + 0.1
+        ifelse aux_random_propenso_facebook + propenso_facebook > 10 [set propenso_facebook 10][set propenso_facebook aux_random_propenso_facebook + propenso_facebook]
+      ]
+      if conocimiento_twitter = 1 [
+        let aux_random_propenso_twitter random-float (10 - 0.1) + 0.1
+        ifelse aux_random_propenso_twitter + propenso_twitter > 10 [set propenso_twitter 10][set propenso_twitter aux_random_propenso_twitter + propenso_twitter]
+      ]
+      if conocimiento_whatsapp = 1 [
+        let aux_random_propenso_whatsapp random-float (10 - 0.1) + 0.1
+        ifelse aux_random_propenso_whatsapp + propenso_whatsapp > 10 [set propenso_whatsapp 10][set propenso_whatsapp aux_random_propenso_whatsapp + propenso_whatsapp]
+      ]
+    ]
+    set limite_propenso_facebook random propenso_facebook
+    set limite_propenso_twitter random propenso_twitter
+    set limite_propenso_whatsapp random propenso_whatsapp
+    set afinidad_contactos_facebook_politico ((contactos_facebook * random-float (0.75 - 0.05) + 0.05) / 100)
+    set afinidad_contactos_facebook_leyendas ((contactos_facebook * random-float (0.75 - 0.05) + 0.05) / 100)
+    set afinidad_contactos_facebook_negocios ((contactos_facebook * random-float (0.75 - 0.05) + 0.05) / 100)
+    set afinidad_contactos_facebook_cientifico ((contactos_facebook * random-float (0.75 - 0.05) + 0.05) / 100)
+    set afinidad_contactos_twitter_politico ((contactos_twitter * random-float (0.75 - 0.50) + 0.50) / 100)
+    set afinidad_contactos_twitter_leyendas ((contactos_twitter * random-float (0.75 - 0.50) + 0.50) / 100)
+    set afinidad_contactos_twitter_negocios ((contactos_twitter * random-float (0.75 - 0.50) + 0.50) / 100)
+    set afinidad_contactos_twitter_cientifico ((contactos_twitter * random-float (0.75 - 0.50) + 0.50) / 100)
+    set afinidad_contactos_whatsapp_politico 0
+    set afinidad_contactos_whatsapp_leyendas 0
+    set afinidad_contactos_whatsapp_negocios 0
+    set afinidad_contactos_whatsapp_cientifico 0
+    set compartir_noticia_dia? false
+    set conocimiento_twitter random 2
+  ]
+  let i num-usuarios * 0.5
+  ask n-of i usuarios[
     set shape "person business"
     setxy random-xcor random-ycor
   ]
-   let j num-usuarios * 0.12
-   ask n-of j usuarios[
+  let j num-usuarios * 0.12
+  ask n-of j usuarios[
     set peso_vinculacion_ideas_pre 0.6 + random-float 0.25
   ]
-   let l num-usuarios * 0.08
-   ask n-of l usuarios[
+  let l num-usuarios * 0.08
+  ask n-of l usuarios[
     set verificacion 1
   ]
   let m num-usuarios * 0.286
-   ask n-of m usuarios[
+  ask n-of m usuarios[
     set peso_verificacion 0.7 + random-float 0.3
     set es_familia? false
     set es_amigo? true
@@ -161,27 +289,27 @@ to setup-usuarios
     set es_otros? false
   ]
   let n num-usuarios * 0.286
-   ask n-of n usuarios[
+  ask n-of n usuarios[
     set peso_verificacion 0.6 + random-float 0.2
     set es_familia? false
     set es_amigo? false
     set es_colega? true
     set es_otros? false
   ]
-    let o num-usuarios * 0.143
-   ask n-of o usuarios[
+  let o num-usuarios * 0.143
+  ask n-of o usuarios[
     set peso_verificacion 0.4 + random-float 0.2
   ]
-   let p num-usuarios * 0.143
-   ask n-of p usuarios[
+  let p num-usuarios * 0.143
+  ask n-of p usuarios[
     set peso_verificacion 0.3 + random-float 0.2
   ]
-   let q num-usuarios * 0.143
-   ask n-of q usuarios[
+  let q num-usuarios * 0.143
+  ask n-of q usuarios[
     set peso_verificacion 0.2 + random-float 0.1
   ]
-   let r num-usuarios * 0.25
-   ask n-of r usuarios[
+  let r num-usuarios * 0.25
+  ask n-of r usuarios[
     set peso_confianza 0.65 + random-float 0.15
     set impacto_emocional 0
     set peso_vinculacion_ideas_pre 0.25 + random-float 0.1
@@ -190,8 +318,8 @@ to setup-usuarios
     set es_colega? false
     set es_otros? true
   ]
-   let s num-usuarios * 0.125
-   ask n-of s usuarios[
+  let s num-usuarios * 0.125
+  ask n-of s usuarios[
     set peso_confianza 0.7
     set peso_impacto_emocional 0.2 + random-float 0.1
     set peso_no_confianza_medios 0.45 + random-float 0.15
@@ -200,41 +328,41 @@ to setup-usuarios
     set tema_negocios? true
     set tema_cientifico? false
   ]
-   let t num-usuarios * 0.125
-   ask n-of t usuarios[
+  let t num-usuarios * 0.125
+  ask n-of t usuarios[
     set peso_no_confianza_medios 0.05  + random-float 0.05
     set tema_politico? false
     set tema_leyendas_urbanas? false
     set tema_negocios? false
     set tema_cientifico? true
   ]
-   let u num-usuarios * 0.125
-   ask n-of u usuarios[
+  let u num-usuarios * 0.125
+  ask n-of u usuarios[
     set peso_no_confianza_medios 0.4 + random-float 0.1
   ]
-   let v num-usuarios * 0.4
-   ask n-of v usuarios[
+  let v num-usuarios * 0.4
+  ask n-of v usuarios[
     set no_confianza_medios 1
     set confianza 0
   ]
-   let w num-usuarios * 0.375
-   ask n-of w usuarios[
+  let w num-usuarios * 0.375
+  ask n-of w usuarios[
     set no_confianza_medios 0.7
   ]
-   let x num-usuarios * 0.222
-   ask n-of x usuarios[
+  let x num-usuarios * 0.222
+  ask n-of x usuarios[
     set peso_confianza 0.65 + random-float 0.15
     set tema_politico? false
     set tema_leyendas_urbanas? true
     set tema_negocios? false
     set tema_cientifico? false
   ]
-   let y num-usuarios * 0.444
-   ask n-of y usuarios[
+  let y num-usuarios * 0.444
+  ask n-of y usuarios[
     set peso_confianza 0.6 + random-float 0.1
   ]
-   let z num-usuarios * 0.111
-   ask n-of z usuarios[
+  let z num-usuarios * 0.111
+  ask n-of z usuarios[
     set peso_confianza 0.2 + random-float 0.1
   ]
 
@@ -251,7 +379,7 @@ to setup-network-links
     ask one-of usuarios
     [
       let choice (min-one-of (other usuarios with [not link-neighbor? myself])
-                   [distance myself])
+        [distance myself])
       if choice != nobody [ create-link-with choice ]
     ]
   ]
@@ -261,13 +389,32 @@ to setup-network-links
   ]
 end
 
+to setup-globals
+  set total_facebook 0
+  set total_twitter 0
+  set total_whatsapp 0
+  set total_x_hora_facebook 0
+  set total_x_hora_twitter 0
+  set total_x_hora_whatsapp 0
+end
+
 ;;------------------------------------------------------------------------------------------------------------------------------------------
 ;;Go model
 ;;------------------------------------------------------------------------------------------------------------------------------------------
 
 to go
   transmitir-noticia-falsa
+  update_globals
   tick
+  clean_globals
+  if count usuarios with [difusor?] = 0 [
+    stop
+  ]
+  if ticks mod 24 = 0 [
+    ask usuarios[
+      set compartir_noticia_dia? false
+    ]
+  ]
 end
 
 to transmitir-noticia-falsa
@@ -278,11 +425,18 @@ to transmitir-noticia-falsa
     let usuario_whatsapp_actual? usuario_whatsapp?
     let aux_noticia_formato noticia_formato
     let aux_noticia_tema noticia_tema
-    let aux_noticia_idetificador noticia_identificador
+    let aux_noticia_identificador noticia_identificador
     let aux_self self
+    let aux_conocimiento_twitter conocimiento_twitter
+    let aux_preferencia_facilidad preferencia_facilidad
+    let aux_preferencia_alcance preferencia_alcance
+    let aux_es_familia? es_familia?
+    let aux_es_amigo? es_amigo?
+    let aux_es_otros? es_otros?
+    let aux_preferencia_privacidad preferencia_privacidad
     ask link-neighbors with [usuario_facebook? = usuario_facebook_actual? OR usuario_twitter? = usuario_twitter_actual? OR usuario_whatsapp? = usuario_whatsapp_actual?] [
-      ;show position aux_noticia_idetificador noticias_array
-      if position aux_noticia_idetificador noticias_array = false [
+      ;show position aux_noticia_identificador noticias_array
+      if position aux_noticia_identificador noticias_array = false [
         ; SET no_confianza_medios
         ifelse random-float 1 < 0.751 [set no_confianza_medios 1] [set no_confianza_medios 0]
         ; SET peso_no_confianza_medios
@@ -324,59 +478,10 @@ to transmitir-noticia-falsa
         ajustar-pesos
         let decision_compartir (no_confianza_medios * peso_no_confianza_medios) + (vinculacion_ideas_pre * peso_vinculacion_ideas_pre) + (verificacion * peso_verificacion) + (confianza * peso_confianza) + (impacto_emocional * peso_impacto_emocional)
         if decision_compartir < random-float 1 [
-          ifelse conocimiento_facebook = 0 AND conocimiento_twitter = 0 AND conocimiento_whatsapp = 0 [
-            let random_conocimiento 3
-            if random_conocimiento = 0 [
-              let aux_random_propenso_facebook random-float (10 - 0.1) + 0.1
-              ifelse aux_random_propenso_facebook + propenso_facebook > 10 [set propenso_facebook 10][set propenso_facebook aux_random_propenso_facebook + propenso_facebook]
-            ]
-            if random_conocimiento = 1 [
-              let aux_random_propenso_twitter random-float (10 - 0.1) + 0.1
-              ifelse aux_random_propenso_twitter + propenso_twitter > 10 [set propenso_twitter 10][set propenso_twitter aux_random_propenso_twitter + propenso_twitter]
-            ]
-            if random_conocimiento = 2 [
-              let aux_random_propenso_whatsapp random-float (10 - 0.1) + 0.1
-              ifelse aux_random_propenso_whatsapp + propenso_whatsapp > 10 [set propenso_whatsapp 10][set propenso_whatsapp aux_random_propenso_whatsapp + propenso_whatsapp]
-            ]
-          ] [
-            if conocimiento_facebook = 1 [
-              let aux_random_propenso_facebook random-float (10 - 0.1) + 0.1
-              ifelse aux_random_propenso_facebook + propenso_facebook > 10 [set propenso_facebook 10][set propenso_facebook aux_random_propenso_facebook + propenso_facebook]
-            ]
-            if conocimiento_twitter = 1 [
-              let aux_random_propenso_twitter random-float (10 - 0.1) + 0.1
-              ifelse aux_random_propenso_twitter + propenso_twitter > 10 [set propenso_twitter 10][set propenso_twitter aux_random_propenso_twitter + propenso_twitter]
-            ]
-            if conocimiento_whatsapp = 1 [
-              let aux_random_propenso_whatsapp random-float (10 - 0.1) + 0.1
-              ifelse aux_random_propenso_whatsapp + propenso_whatsapp > 10 [set propenso_whatsapp 10][set propenso_whatsapp aux_random_propenso_whatsapp + propenso_whatsapp]
-            ]
-          ]
-          let aux_propenso_facebook propenso_facebook
-          let aux_propenso_twitter propenso_twitter
-          let aux_propenso_whatsapp propenso_whatsapp
-          ask link-with aux_self [
-            ifelse (aux_propenso_facebook > aux_propenso_twitter AND aux_propenso_facebook > aux_propenso_whatsapp) [
-             if ([reaccion_positiva] of aux_noticia_idetificador) > ([reaccion_negativa] of aux_noticia_idetificador)[
-                set aux_propenso_facebook aux_propenso_facebook + 1
-             ]
-             set color blue
-            ][ifelse (aux_propenso_twitter > aux_propenso_facebook AND aux_propenso_twitter > aux_propenso_whatsapp) [
-             if ([reaccion_positiva] of aux_noticia_idetificador) > ([reaccion_negativa] of aux_noticia_idetificador)[
-                set aux_propenso_twitter aux_propenso_twitter + 1
-             ]
-             set color cyan + 1
-            ][
-             if ([reaccion_positiva] of aux_noticia_idetificador) > ([reaccion_negativa] of aux_noticia_idetificador)[
-                set aux_propenso_whatsapp aux_propenso_whatsapp + 1
-             ]
-            set color green
-            ]]
-          ]
-          set propenso_facebook aux_propenso_facebook
-          set propenso_twitter aux_propenso_twitter
-          set propenso_whatsapp aux_propenso_whatsapp
-          ser-fuente-noticia-falsa false aux_noticia_formato aux_noticia_tema aux_noticia_idetificador
+          let aux_compartir_noticia_dia? false
+          ifelse compartir_noticia_dia? [set aux_compartir_noticia_dia? true] [set compartir_noticia_dia? true]
+          definir-canal aux_self aux_noticia_identificador aux_noticia_formato aux_noticia_tema aux_compartir_noticia_dia? aux_conocimiento_twitter
+          aux_preferencia_facilidad aux_preferencia_alcance aux_es_familia? aux_es_amigo? aux_es_otros? aux_preferencia_privacidad
         ]
       ]
     ]
@@ -384,49 +489,328 @@ to transmitir-noticia-falsa
   ]
 end
 
+to definir-canal [aux_self aux_noticia_identificador aux_noticia_formato aux_noticia_tema aux_compartir_noticia_dia? aux_conocimiento_twitter
+  aux_preferencia_facilidad aux_preferencia_alcance aux_es_familia? aux_es_amigo? aux_es_otros? aux_preferencia_privacidad]
+let aux_propenso_facebook propenso_facebook
+let aux_propenso_twitter propenso_twitter
+let aux_propenso_whatsapp propenso_whatsapp
+let aux_limite_propenso_facebook limite_propenso_facebook
+let aux_limite_propenso_twitter limite_propenso_twitter
+let aux_limite_propenso_whatsapp limite_propenso_whatsapp
+let aux_afinidad_contactos_facebook_politico afinidad_contactos_facebook_politico
+let aux_afinidad_contactos_facebook_leyendas afinidad_contactos_facebook_leyendas
+let aux_afinidad_contactos_facebook_negocios afinidad_contactos_facebook_negocios
+let aux_afinidad_contactos_facebook_cientifico afinidad_contactos_facebook_cientifico
+let aux_afinidad_contactos_twitter_politico afinidad_contactos_twitter_politico
+let aux_afinidad_contactos_twitter_leyendas afinidad_contactos_twitter_leyendas
+let aux_afinidad_contactos_twitter_negocios afinidad_contactos_twitter_negocios
+let aux_afinidad_contactos_twitter_cientifico afinidad_contactos_twitter_cientifico
+let aux_afinidad_contactos_whatsapp_politico afinidad_contactos_whatsapp_politico
+let aux_afinidad_contactos_whatsapp_leyendas afinidad_contactos_whatsapp_leyendas
+let aux_afinidad_contactos_whatsapp_negocios afinidad_contactos_whatsapp_negocios
+let aux_afinidad_contactos_whatsapp_cientifico afinidad_contactos_whatsapp_cientifico
+let aux_contactos_facebook contactos_facebook
+let aux_contactos_twitter contactos_twitter
+let aux_contactos_whatsapp contactos_whatsapp
+let aux_reaccion_positiva 0
+let aux_reaccion_negativa 0
+let verificaciones 0
+ask link-with aux_self [
+  ifelse (aux_propenso_facebook > aux_propenso_twitter AND aux_propenso_facebook > aux_propenso_whatsapp) [
+    calcular-canal-facebook aux_contactos_facebook aux_compartir_noticia_dia? aux_noticia_identificador verificaciones
+    aux_afinidad_contactos_facebook_politico aux_reaccion_positiva aux_reaccion_negativa aux_afinidad_contactos_facebook_leyendas aux_afinidad_contactos_facebook_negocios
+    aux_afinidad_contactos_facebook_cientifico aux_propenso_facebook aux_preferencia_alcance aux_limite_propenso_facebook
+    set total_facebook total_facebook + 1
+    set total_x_hora_facebook total_x_hora_facebook + 1
+    ][ifelse (aux_propenso_twitter > aux_propenso_facebook AND aux_propenso_twitter > aux_propenso_whatsapp) [
+      calcular-canal-twitter aux_contactos_twitter aux_compartir_noticia_dia? aux_noticia_identificador verificaciones aux_afinidad_contactos_twitter_politico
+      aux_reaccion_positiva aux_reaccion_negativa aux_afinidad_contactos_twitter_leyendas aux_afinidad_contactos_twitter_negocios aux_afinidad_contactos_twitter_cientifico
+      aux_propenso_twitter aux_conocimiento_twitter aux_preferencia_facilidad aux_limite_propenso_twitter
+      set total_twitter total_twitter + 1
+      set total_x_hora_twitter total_x_hora_twitter + 1
+    ][
+      calcular-canal-whatsapp aux_es_familia? aux_noticia_identificador aux_es_amigo? aux_es_otros? aux_propenso_whatsapp aux_preferencia_privacidad aux_limite_propenso_whatsapp
+      set total_whatsapp total_whatsapp + 1
+      set total_x_hora_whatsapp total_x_hora_whatsapp + 1
+  ]]
+]
+set propenso_facebook aux_propenso_facebook
+set propenso_twitter aux_propenso_twitter
+set propenso_whatsapp aux_propenso_whatsapp
+ser-fuente-noticia-falsa false aux_noticia_formato aux_noticia_tema aux_noticia_identificador
+end
+
+to calcular-canal-facebook [aux_contactos_facebook aux_compartir_noticia_dia? aux_noticia_identificador verificaciones aux_afinidad_contactos_facebook_politico
+  aux_reaccion_positiva aux_reaccion_negativa aux_afinidad_contactos_facebook_leyendas aux_afinidad_contactos_facebook_negocios aux_afinidad_contactos_facebook_cientifico
+  aux_propenso_facebook aux_preferencia_alcance aux_limite_propenso_facebook]
+let reacciones random aux_contactos_facebook
+if ticks mod 24 = 13 OR ticks mod 24 = 14 OR ticks mod 24 = 15 OR ticks mod 24 = 16
+  [
+    set reacciones reacciones + reacciones * 0.18
+  ]
+if ticks mod 24 = 0 OR ticks mod 24 = 1 OR ticks mod 24 = 2
+OR ticks mod 24 = 3 OR ticks mod 24 = 4 OR ticks mod 24 = 5
+OR ticks mod 24 = 6 OR ticks mod 24 = 7 OR ticks mod 24 = 8
+[
+  set reacciones random 6
+]
+if aux_compartir_noticia_dia? [ set reacciones reacciones - reacciones * random-float(0.7 - 0.5) + 0.5 ]
+if [formato] of aux_noticia_identificador = 0 AND [caracteres] of aux_noticia_identificador > 250 [
+  set reacciones reacciones - reacciones * random-float(0.25 - 0.15) + 0.15
+]
+if [formato] of aux_noticia_identificador = 1 [
+  set reacciones reacciones + reacciones * random-float(0.15 - 0.08) + 0.08
+]
+if [formato] of aux_noticia_identificador = 2 [
+  set reacciones reacciones + reacciones * random-float(0.18 - 0.10) + 0.10
+]
+set verificaciones reacciones * random (0.15 - 0.1) + 0.1
+if aux_contactos_facebook > 200 [set aux_afinidad_contactos_facebook_politico aux_afinidad_contactos_facebook_politico - ((aux_afinidad_contactos_facebook_politico * random-float (0.15 - 0.05) + 0.05) / 100) ]
+if aux_afinidad_contactos_facebook_politico > 0.5 [
+  set aux_reaccion_positiva (reacciones * random-float (0.9 - 0.6) + 0.6)
+  set aux_reaccion_negativa reacciones - aux_reaccion_positiva
+]
+ifelse [tema] of aux_noticia_identificador = 1 [
+  set reacciones reacciones * 0.33
+  if aux_contactos_facebook > 200 [set aux_afinidad_contactos_facebook_leyendas aux_afinidad_contactos_facebook_leyendas - ((aux_afinidad_contactos_facebook_leyendas * random-float (0.06 - 0.03) + 0.03) / 100) ]
+  if aux_afinidad_contactos_facebook_politico > 0.5 [
+    set aux_reaccion_positiva (reacciones * random-float (0.85 - 0.55) + 0.55)
+    set aux_reaccion_negativa reacciones - aux_reaccion_positiva
+  ]
+] [
+  if [tema] of aux_noticia_identificador = 2[
+    set reacciones reacciones * 0.60
+    if aux_contactos_facebook > 200 [set aux_afinidad_contactos_facebook_negocios aux_afinidad_contactos_facebook_negocios - ((aux_afinidad_contactos_facebook_negocios * random-float (0.08 - 0.04) + 0.04) / 100) ]
+    if aux_afinidad_contactos_facebook_politico > 0.5 [
+      set aux_reaccion_positiva (reacciones * random-float (0.84 - 0.54) + 0.54)
+      set aux_reaccion_negativa reacciones - aux_reaccion_positiva
+    ]
+  ]
+  if [tema] of aux_noticia_identificador = 3[
+    set reacciones reacciones * 0.73
+    if aux_contactos_facebook > 200 [set aux_afinidad_contactos_facebook_cientifico aux_afinidad_contactos_facebook_cientifico - ((aux_afinidad_contactos_facebook_cientifico * random-float random-float (0.05 - 0.03) + 0.03) / 100) ]
+    if aux_afinidad_contactos_facebook_politico > 0.5 [
+      set aux_reaccion_positiva (reacciones * random-float (0.83 - 0.53) + 0.53)
+      set aux_reaccion_negativa reacciones - aux_reaccion_positiva
+    ]
+  ]
+]
+ifelse aux_reaccion_positiva > aux_reaccion_negativa[
+  ifelse aux_preferencia_alcance = 1 [
+    ifelse aux_reaccion_positiva > reacciones * 0.8 [set aux_propenso_facebook aux_propenso_facebook + 1] [set aux_propenso_facebook aux_propenso_facebook + 0.5]
+  ][
+    ifelse aux_reaccion_positiva > reacciones * 0.8 [set aux_propenso_facebook aux_propenso_facebook + 0.7] [set aux_propenso_facebook aux_propenso_facebook + 0.5]
+  ]
+] [
+  ifelse aux_preferencia_alcance = 1 [
+    ifelse aux_reaccion_positiva > reacciones * 0.8 [set aux_propenso_facebook aux_propenso_facebook - 1] [set aux_propenso_facebook aux_propenso_facebook - 0.5]
+  ][
+    ifelse aux_reaccion_positiva > reacciones * 0.8 [set aux_propenso_facebook aux_propenso_facebook - 0.7] [set aux_propenso_facebook aux_propenso_facebook - 0.5]
+  ]
+]
+if random 2 = 1 [
+  ifelse verificaciones > reacciones * 0.10 [
+    set aux_propenso_facebook aux_propenso_facebook + 1
+  ] [
+    set aux_propenso_facebook aux_propenso_facebook + 0.5
+  ]
+]
+if reacciones = 0 [set aux_propenso_facebook aux_propenso_facebook - 0.5]
+if reacciones < 0 [set aux_propenso_facebook aux_propenso_facebook - 0.3]
+set color blue
+if aux_propenso_facebook < aux_limite_propenso_facebook [
+  set aux_propenso_facebook 0
+]
+end
+
+to calcular-canal-twitter [aux_contactos_twitter aux_compartir_noticia_dia? aux_noticia_identificador verificaciones aux_afinidad_contactos_twitter_politico
+  aux_reaccion_positiva aux_reaccion_negativa aux_afinidad_contactos_twitter_leyendas aux_afinidad_contactos_twitter_negocios aux_afinidad_contactos_twitter_cientifico
+  aux_propenso_twitter aux_conocimiento_twitter aux_preferencia_facilidad aux_limite_propenso_twitter]
+let es_tendencia_twitter random 2
+let reacciones random aux_contactos_twitter
+if ticks mod 24 = 13 OR ticks mod 24 = 14 OR ticks mod 24 = 15
+  [
+    set reacciones reacciones + reacciones * 0.22
+  ]
+if ticks mod 24 = 20 OR ticks mod 24 = 21 OR ticks mod 24 = 22
+OR ticks mod 24 = 23 OR ticks mod 24 = 0 OR ticks mod 24 = 1
+OR ticks mod 24 = 2 OR ticks mod 24 = 3 OR ticks mod 24 = 4
+OR ticks mod 24 = 5 OR ticks mod 24 = 6 OR ticks mod 24 = 7 OR ticks mod 24 = 8
+[
+  set reacciones random 20
+]
+if aux_compartir_noticia_dia? [ set reacciones reacciones + reacciones * random-float(0.15 - 0.1) + 0.1 ]
+if [formato] of aux_noticia_identificador = 1 [
+  set reacciones reacciones + reacciones * random-float(0.15 - 0.08) + 0.08
+]
+if [formato] of aux_noticia_identificador = 2 [
+  set reacciones reacciones + reacciones * random-float(0.18 - 0.10) + 0.10
+]
+ifelse es_tendencia_twitter = 1 AND aux_conocimiento_twitter = 1 [set reacciones reacciones + reacciones * 0.12] [set reacciones reacciones - reacciones * 0.12]
+set verificaciones reacciones * random (0.15 - 0.1) + 0.1
+if aux_contactos_twitter > 700 [set aux_afinidad_contactos_twitter_politico aux_afinidad_contactos_twitter_politico - ((aux_afinidad_contactos_twitter_politico * random-float (0.11 - 0.03) + 0.03) / 100) ]
+if aux_afinidad_contactos_twitter_politico > 0.5 [
+  set aux_reaccion_positiva (reacciones * random-float (0.9 - 0.6) + 0.6)
+  set aux_reaccion_negativa reacciones - aux_reaccion_positiva
+]
+ifelse [tema] of aux_noticia_identificador = 1 [
+  set reacciones reacciones * 0.33
+  if aux_contactos_twitter > 700 [set aux_afinidad_contactos_twitter_leyendas aux_afinidad_contactos_twitter_leyendas - ((aux_afinidad_contactos_twitter_leyendas * random-float (0.05 - 0.03) + 0.03) / 100) ]
+  if aux_afinidad_contactos_twitter_politico > 0.5 [
+    set aux_reaccion_positiva (reacciones * random-float (0.85 - 0.55) + 0.55)
+    set aux_reaccion_negativa reacciones - aux_reaccion_positiva
+  ]
+] [
+  if [tema] of aux_noticia_identificador = 2[
+    set reacciones reacciones * 0.60
+    if aux_contactos_twitter > 700 [set aux_afinidad_contactos_twitter_negocios aux_afinidad_contactos_twitter_negocios - ((aux_afinidad_contactos_twitter_negocios * random-float (0.06 - 0.03) + 0.03) / 100) ]
+    if aux_afinidad_contactos_twitter_politico > 0.5 [
+      set aux_reaccion_positiva (reacciones * random-float (0.84 - 0.54) + 0.54)
+      set aux_reaccion_negativa reacciones - aux_reaccion_positiva
+    ]
+  ]
+  if [tema] of aux_noticia_identificador = 3[
+    set reacciones reacciones * 0.73
+    if aux_contactos_twitter > 700 [set aux_afinidad_contactos_twitter_cientifico aux_afinidad_contactos_twitter_cientifico - ((aux_afinidad_contactos_twitter_cientifico * random-float random-float (0.04 - 0.02) + 0.02) / 100) ]
+    if aux_afinidad_contactos_twitter_politico > 0.5 [
+      set aux_reaccion_positiva (reacciones * random-float (0.83 - 0.53) + 0.53)
+      set aux_reaccion_negativa reacciones - aux_reaccion_positiva
+    ]
+  ]
+]
+ifelse aux_reaccion_positiva > aux_reaccion_negativa[
+  ifelse aux_preferencia_facilidad = 1 [
+    ifelse aux_reaccion_positiva > reacciones * 0.8 [set aux_propenso_twitter aux_propenso_twitter + 1] [set aux_propenso_twitter aux_propenso_twitter + 0.5]
+  ][
+    ifelse aux_reaccion_positiva > reacciones * 0.8 [set aux_propenso_twitter aux_propenso_twitter + 0.7] [set aux_propenso_twitter aux_propenso_twitter + 0.5]
+  ]
+] [
+  ifelse aux_preferencia_facilidad = 1 [
+    ifelse aux_reaccion_positiva > reacciones * 0.8 [set aux_propenso_twitter aux_propenso_twitter - 1] [set aux_propenso_twitter aux_propenso_twitter - 0.5]
+  ][
+    ifelse aux_reaccion_positiva > reacciones * 0.8 [set aux_propenso_twitter aux_propenso_twitter - 0.7] [set aux_propenso_twitter aux_propenso_twitter - 0.5]
+  ]
+]
+if random 2 = 1 [
+  ifelse verificaciones > reacciones * 0.10 [
+    set aux_propenso_twitter aux_propenso_twitter + 1
+  ] [
+    set aux_propenso_twitter aux_propenso_twitter + 0.5
+  ]
+]
+if reacciones = 0 [set aux_propenso_twitter aux_propenso_twitter - 0.5]
+if reacciones < 0 [set aux_propenso_twitter aux_propenso_twitter - 0.3]
+set color cyan + 1
+if aux_propenso_twitter < aux_limite_propenso_twitter [
+  set aux_propenso_twitter 0
+]
+end
+
+to calcular-canal-whatsapp[aux_es_familia? aux_noticia_identificador aux_es_amigo? aux_es_otros? aux_propenso_whatsapp aux_preferencia_privacidad aux_limite_propenso_whatsapp]
+  let rechazo 1
+  if aux_es_familia? AND [tema] of aux_noticia_identificador = 0 [if random-float 1 < random-float (0.25 - 0.08) + 0.08 [set rechazo 0]]
+  if aux_es_familia? AND [tema] of aux_noticia_identificador = 1 [if random-float 1 < random-float (0.1 - 0.05) + 0.05 [set rechazo 0]]
+  if aux_es_familia? AND [tema] of aux_noticia_identificador = 2 [if random-float 1 < random-float (0.15 - 0.06) + 0.06 [set rechazo 0]]
+  if aux_es_familia? AND [tema] of aux_noticia_identificador = 3 [if random-float 1 < random-float (0.18 - 0.07) + 0.07 [set rechazo 0]]
+  if aux_es_amigo? AND [tema] of aux_noticia_identificador = 0 [if random-float 1 < random-float (0.05 - 0.01) + 0.01 [set rechazo 0]]
+  if aux_es_amigo? AND [tema] of aux_noticia_identificador = 1 [if random-float 1 < random-float (0.02 - 0.01) + 0.01 [set rechazo 0]]
+  if aux_es_amigo? AND [tema] of aux_noticia_identificador = 2 [if random-float 1 < random-float (0.03 - 0.03) + 0.01 [set rechazo 0]]
+  if aux_es_amigo? AND [tema] of aux_noticia_identificador = 3 [if random-float 1 < random-float (0.06 - 0.01) + 0.01 [set rechazo 0]]
+  if aux_es_otros? AND [tema] of aux_noticia_identificador = 0 [if random-float 1 < random-float (0.3 - 0.02) + 0.02 [set rechazo 0]]
+  if aux_es_otros? AND [tema] of aux_noticia_identificador = 1 [if random-float 1 < random-float (0.2 - 0.05) + 0.05 [set rechazo 0]]
+  if aux_es_otros? AND [tema] of aux_noticia_identificador = 2 [if random-float 1 < random-float (0.18 - 0.03) + 0.03 [set rechazo 0]]
+  if aux_es_otros? AND [tema] of aux_noticia_identificador = 3 [if random-float 1 < random-float (0.2 - 0.04) + 0.04 [set rechazo 0]]
+  if [formato] of aux_noticia_identificador = 0 AND [caracteres] of aux_noticia_identificador > 200 [
+    if random-float 1 < random-float (0.08 - 0.06) + 0.06 [set rechazo 0]
+  ]
+  if [formato] of aux_noticia_identificador = 1 [
+    if random-float 1 < random-float (0.15 - 0.08) + 0.08 [set rechazo 0]
+  ]
+  if [formato] of aux_noticia_identificador = 1 [
+    if random-float 1 < random-float (0.18 - 0.09) + 0.09 [set rechazo 0]
+  ]
+  ifelse rechazo = 0 [set aux_propenso_whatsapp aux_propenso_whatsapp + 1] [set aux_propenso_whatsapp aux_propenso_whatsapp - 1]
+  let aprobacion random-float 1
+  let comentario_positivo 0
+  ifelse aprobacion > 0.5  [
+    set comentario_positivo comentario_positivo + 1
+    set aux_propenso_whatsapp aux_propenso_whatsapp + 1
+  ] [
+    set aux_propenso_whatsapp aux_propenso_whatsapp - 0.5
+  ]
+  if ([reaccion_positiva] of aux_noticia_identificador) > ([reaccion_negativa] of aux_noticia_identificador)[
+    set aux_propenso_whatsapp aux_propenso_whatsapp + 1
+  ]
+  if aux_preferencia_privacidad = 1 AND rechazo = 0 [set aux_propenso_whatsapp aux_propenso_whatsapp + 1.5]
+  if aux_preferencia_privacidad = 1 AND rechazo = 1 [set aux_propenso_whatsapp aux_propenso_whatsapp + 0.8]
+  if random-float 1 < 0.05 [
+    set aux_propenso_whatsapp aux_propenso_whatsapp - 0.08
+  ]
+  set color green
+  if aux_propenso_whatsapp < aux_limite_propenso_whatsapp [
+  set aux_propenso_whatsapp 0
+]
+end
+
 to ajustar-pesos
-      let sumPesos (peso_vinculacion_ideas_pre + peso_verificacion + peso_confianza + peso_no_confianza_medios + peso_impacto_emocional)
-      if(sumPesos != 1)[
-        ifelse sumPesos < 1 [
-          let diff 1 - sumPesos
-          let randomPeso random 5
-          if randomPeso = 0 [set peso_vinculacion_ideas_pre (peso_vinculacion_ideas_pre + diff)]
-          if randomPeso = 1 [set peso_verificacion (peso_verificacion + diff)]
-          if randomPeso = 2 [set peso_confianza (peso_confianza + diff)]
-          if randomPeso = 3 [set peso_no_confianza_medios (peso_no_confianza_medios + diff)]
-          if randomPeso = 4 [set peso_impacto_emocional (peso_impacto_emocional + diff)]
-        ] [
-          let diff sumPesos - 1
-          let randomPeso random 5
-          if randomPeso = 0 [set peso_vinculacion_ideas_pre (peso_vinculacion_ideas_pre - diff)]
-          if randomPeso = 1 [set peso_verificacion (peso_verificacion - diff)]
-          if randomPeso = 2 [set peso_confianza (peso_confianza - diff)]
-          if randomPeso = 3 [set peso_no_confianza_medios (peso_no_confianza_medios - diff)]
-          if randomPeso = 4 [set peso_impacto_emocional (peso_impacto_emocional - diff)]
-        ]
-      ]
+  let sumPesos (peso_vinculacion_ideas_pre + peso_verificacion + peso_confianza + peso_no_confianza_medios + peso_impacto_emocional)
+  if(sumPesos != 1)[
+    ifelse sumPesos < 1 [
+      let diff 1 - sumPesos
+      let randomPeso random 5
+      if randomPeso = 0 [set peso_vinculacion_ideas_pre (peso_vinculacion_ideas_pre + diff)]
+      if randomPeso = 1 [set peso_verificacion (peso_verificacion + diff)]
+      if randomPeso = 2 [set peso_confianza (peso_confianza + diff)]
+      if randomPeso = 3 [set peso_no_confianza_medios (peso_no_confianza_medios + diff)]
+      if randomPeso = 4 [set peso_impacto_emocional (peso_impacto_emocional + diff)]
+    ] [
+      let diff sumPesos - 1
+      let randomPeso random 5
+      if randomPeso = 0 [set peso_vinculacion_ideas_pre (peso_vinculacion_ideas_pre - diff)]
+      if randomPeso = 1 [set peso_verificacion (peso_verificacion - diff)]
+      if randomPeso = 2 [set peso_confianza (peso_confianza - diff)]
+      if randomPeso = 3 [set peso_no_confianza_medios (peso_no_confianza_medios - diff)]
+      if randomPeso = 4 [set peso_impacto_emocional (peso_impacto_emocional - diff)]
+    ]
+  ]
 end
 
 to ser-fuente-noticia-falsa [nueva_noticia? parametro_noticia_formato parametro_noticia_tema parametro_noticia]
   set difusor? true
   set color red
-  ifelse(nueva_noticia? = true)[
-   let init_current_noticia one-of noticias
-   set noticia_formato [formato] of init_current_noticia
-   set noticia_tema [tema] of init_current_noticia
-   set noticias_array lput init_current_noticia noticias_array
-   set noticia_identificador init_current_noticia
-   ask init_current_noticia [
+  set compartir_noticia_dia? true
+  ifelse(nueva_noticia?)[
+    let init_current_noticia one-of noticias
+    set noticia_formato [formato] of init_current_noticia
+    set noticia_tema [tema] of init_current_noticia
+    set noticias_array lput init_current_noticia noticias_array
+    set noticia_identificador init_current_noticia
+    ask init_current_noticia [
       set canal random 3
-   ]
+    ]
   ][
-   set noticia_formato parametro_noticia_formato
-   set noticia_tema parametro_noticia_tema
-   set noticia_identificador parametro_noticia
-   set noticias_array lput parametro_noticia noticias_array
+    set noticia_formato parametro_noticia_formato
+    set noticia_tema parametro_noticia_tema
+    set noticia_identificador parametro_noticia
+    set noticias_array lput parametro_noticia noticias_array
   ]
 
 end
+
+to update_globals
+  set total_redes total_facebook + total_twitter + total_whatsapp
+end
+
+to clean_globals
+  set total_x_hora_facebook 0
+  set total_x_hora_twitter 0
+  set total_x_hora_whatsapp 0
+end
+
+
+
+
+
 @#$#@#$#@
 GRAPHICS-WINDOW
 226
@@ -463,18 +847,18 @@ SLIDER
 num-usuarios
 num-usuarios
 0
-1000
-15.0
+2000
+2000.0
 5
 1
 NIL
 HORIZONTAL
 
 BUTTON
-5
-284
-202
-317
+9
+494
+206
+527
 NIL
 setup
 NIL
@@ -488,10 +872,10 @@ NIL
 1
 
 BUTTON
-5
-326
-202
-359
+9
+536
+206
+569
 NIL
 go
 T
@@ -512,8 +896,8 @@ SLIDER
 num-init-usuarios-transmisores
 num-init-usuarios-transmisores
 0
-500
-1.0
+200
+200.0
 1
 1
 NIL
@@ -528,7 +912,7 @@ num-noticias-video
 num-noticias-video
 0
 1000
-57.0
+1000.0
 1
 1
 NIL
@@ -543,7 +927,7 @@ num-noticias-imagen
 num-noticias-imagen
 0
 1000
-74.0
+1000.0
 1
 1
 NIL
@@ -558,29 +942,97 @@ num-noticias-texto
 num-noticias-texto
 0
 1000
-7.0
+1000.0
 1
 1
 NIL
 VERTICAL
 
+SWITCH
+5
+289
+205
+322
+solo_noticias_politica?
+solo_noticias_politica?
+1
+1
+-1000
+
+SWITCH
+4
+335
+209
+368
+solo_noticias_leyendas?
+solo_noticias_leyendas?
+1
+1
+-1000
+
+SWITCH
+6
+381
+209
+414
+solo_noticias_negocios?
+solo_noticias_negocios?
+1
+1
+-1000
+
+SWITCH
+9
+435
+208
+468
+solo_noticias_cientifico?
+solo_noticias_cientifico?
+0
+1
+-1000
+
 PLOT
-983
-33
-1183
-183
-plot 1
-NIL
-NIL
+947
+18
+1597
+257
+Transmision progresiva
+horas
+noticias
 0.0
-10.0
+150.0
 0.0
-10.0
+10000.0
 true
-false
+true
 "" ""
 PENS
-"default" 1.0 0 -16777216 true "" "plot count usuarios"
+"facebook" 1.0 0 -13345367 true "" "plot total_facebook"
+"twitter" 1.0 0 -8990512 true "" "plot total_twitter"
+"whatsapp" 1.0 0 -10899396 true "" "plot total_whatsapp"
+"todas" 1.0 0 -5825686 true "" "plot total_redes"
+
+PLOT
+946
+290
+1595
+538
+Transmision frecuencia
+horas
+noticias
+0.0
+130.0
+0.0
+100.0
+true
+true
+"" ""
+PENS
+"facebook" 1.0 0 -13345367 true "" "plot total_x_hora_facebook"
+"twitter" 1.0 0 -8990512 true "" "plot total_x_hora_twitter"
+"whatsapp" 1.0 0 -10899396 true "" "plot total_x_hora_whatsapp"
+"todas" 1.0 0 -5825686 true "" ""
 
 @#$#@#$#@
 ## WHAT IS IT?
